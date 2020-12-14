@@ -40,6 +40,10 @@ const usuarioSchema = new Schema({
     cena : {
       type: [String],
       required: true  
+    },
+    refrigerio : {
+      type: [String],
+      required: true  
     }
   },
   intolerancias: String,

@@ -1,19 +1,23 @@
 const {validationResult} = require('express-validator/check');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const Usuario = require('../models/usuario');
 
 exports.putRegistro = (req,res,next) => {
   const errors = validationResult(req);
+  
   if(!errors.isEmpty()){
       const error = new Error('Validacion fallo.');3
       error.statusCode = 422;
       error.data = errors.array();
       throw error;
   }
+  
   const nombre = req.body.nombre;
   const email = req.body.email;
   const password = req.body.password;
+  
   bcrypt.hash(password,12)
     .then(hashedPw => {
       const usuario = new Usuario({
@@ -58,7 +62,14 @@ exports.postLogin = (req,res,next) => {
          error.statusCode = 401;
          throw error;
        }
-       
+       const token = jwt.sign({
+          email: loadedUser.email,
+          userId: loadedUser._id.toString()
+        }, 
+        'somesupersecretsecret', 
+        { expiresIn: '1h'}
+       );
+       res.status(200).json({ token: token, userId: loadedUser._id.toString()});
     })
     .catch(err => {
       if(!err.statusCode){
