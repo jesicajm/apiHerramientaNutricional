@@ -17,9 +17,6 @@ const usuarioSchema = new Schema({
   },
   resetToken : String,
   resetTokenExpiration : Date,
-  tienePlan : {
-    type : String,
-  },
   planNutricional: {
     desayuno : {
       type: [String],
@@ -46,14 +43,8 @@ const usuarioSchema = new Schema({
       required: true  
     }
   },
-  intolerancias: String,
-  fechaInicialPlanificarMenus: String,
-  fechaFinalPlanificarMenus: String,
+  intolerancias: [],
+  minutas:[]
 });
-
-usuarioSchema.methods.establecerTienePlan = function(resTienePlan){
-  this.tienePlan = resTienePlan;
-  return this.save();
-};
 
 module.exports = mongoose.model('Usuario', usuarioSchema);

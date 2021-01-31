@@ -3,6 +3,7 @@ const validator = require('validator');
 const jwt = require('jsonwebtoken');
 
 const Usuario = require('../models/usuario');
+const Minuta = require('../models/minuta');
 
 module.exports = {
     crearUsuario: async function({ userInput }, req) {
@@ -35,9 +36,8 @@ module.exports = {
         nombre: userInput.nombre,
         email: userInput.email,
         password: hashedPw,
-        tienePlan: null,
-        planId: null,
-        intolerancias:null
+        intolerancias: [],
+        menus: []
        });
        const crearUsuario = await usuario.save();
        return { ...crearUsuario._doc, _id: crearUsuario._id.toString()}
@@ -75,7 +75,7 @@ module.exports = {
         const error = new Error('Usuario no encontrado');
         error.statusCode = 401;
         throw error;
-     }
+      }
       usuario.planNutricional.desayuno = userInput.desayuno.split(',');
       usuario.planNutricional.mediaManana = userInput.mediaManana.split(',');
       usuario.planNutricional.almuerzo = userInput.almuerzo.split(',');
@@ -86,12 +86,12 @@ module.exports = {
       console.log(guardarPlan);
       return { 
         ...guardarPlan._doc,
-        desayuno: guardarPlan.desayuno,
-        mediaManana: guardarPlan.mediaManana,
-        almuerzo: guardarPlan.almuerzo,
-        algo: guardarPlan.algo,
-        cena: guardarPlan.cena,
-        refrigerio: guardarPlan.refrigerio,
+        desayuno: guardarPlan.planNutricional.desayuno,
+        mediaManana: guardarPlan.planNutricional.mediaManana,
+        almuerzo: guardarPlan.planNutricional.almuerzo,
+        algo: guardarPlan.planNutricional.algo,
+        cena: guardarPlan.planNutricional.cena,
+        refrigerio: guardarPlan.planNutricional.refrigerio,
       };
     },
     planUsuario: async function(args,req){
@@ -114,5 +114,50 @@ module.exports = {
         cena: usuario.planNutricional.cena,
         refrigerio: usuario.planNutricional.refrigerio
       };
+    },
+    guardarPlanMinuta: async function({ inputMinuta }, req) {
+      if(!req.isAuth){
+        const error = new Error('No autenticado.');
+        error.code = 401;
+        throw error;
+      }
+      const errors = [];
+      if(validator.isEmpty(inputMinuta.fechaInicial)){
+          errors.push({message:'Ingrese una fecha Inicial'});
+      }
+      if(validator.isEmpty(inputMinuta.fechaFinal)){
+        errors.push({message:'Ingrese una fecha final'});
+      }
+      if(errors.length > 0){
+        const error = new Error('Entrada invalida');
+        error.data = errors;
+        error.code = 422;
+        throw error;
+      }
+      const usuario = await Usuario.findById(req.userId);
+      if(!usuario){
+        const error = new Error('Usuario no encontrado');
+        error.code = 401;
+        throw error;
+      }
+      const minuta = new Minuta({
+        fechaInicialPlanificarMenus: inputMinuta.fechaInicial,
+        fechaFinalPlanificarMenus: inputMinuta.fechaFinal,
+        menus:[],
+        usuarioId: usuario
+      });
+      const inputIntolerancias = inputMinuta.intolerancias.split(',');
+      const crearMinuta = await minuta.save();
+      console.log(crearMinuta);
+      usuario.intolerancias = inputIntolerancias;
+      usuario.minutas.push(crearMinuta);
+      await usuario.save();
+      return {
+        ...crearMinuta._doc, 
+        _id:crearMinuta._id.toString(),
+        fechaInicial: crearMinuta.fechaInicialPlanificarMenus,
+        fechaFinal: crearMinuta.fechaFinalPlanificarMenus,
+        intolerancias: inputIntolerancias
+      }
     }
 }

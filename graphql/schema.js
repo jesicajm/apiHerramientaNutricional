@@ -17,6 +17,14 @@ module.exports = buildSchema(`
         refrigerio: [String!]!
     }
 
+    type Minuta {
+        _id: ID!
+        fechaInicial: String!
+        fechaFinal: String!
+        intolerancias: [String!]!
+        usuarioId: Usuario!
+    }
+
     type AuthData {
         token: String!
         usuarioId: String!
@@ -38,6 +46,12 @@ module.exports = buildSchema(`
         refrigerio: String!
     }
 
+    input InputMinuta{
+        fechaInicial: String!
+        fechaFinal: String!
+        intolerancias: String!
+    }
+
     type RootQuery {
         login(email: String!, password: String!): AuthData! 
         planUsuario: Plan!
@@ -46,6 +60,7 @@ module.exports = buildSchema(`
     type RootMutation {
         crearUsuario(userInput: UserInputData): Usuario!
         guardarPlanNutricional(userInput: UserInputPlan): Plan!
+        guardarPlanMinuta(inputMinuta: InputMinuta): Minuta! 
     }
 
     schema {
