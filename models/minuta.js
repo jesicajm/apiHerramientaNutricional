@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 const moment = require('moment');
 
 //const tipoAlimentos = require('./grupoAlimentos');
+const Menu = require('./menu');
+const AlimentosUsuario = require('./alimentosUsuario');
 
 const Schema = mongoose.Schema;
 
@@ -15,7 +17,7 @@ const minutaSchema = new Schema({
       mediaManana: {type: Object, required: true },
       almuerzo: {type: Object, required: true },
       algo: {type: Object, required: true },
-      cena: {type: Object, required: true }
+      cena: {type: Object, required: true } 
     }  
   ],  
   usuarioId : {
@@ -94,15 +96,31 @@ minutaSchema.methods.asignarMes = function(fecha){
     }  
 };
 
+minutaSchema.methods.agregarMenuComida = (planUsuario,comidaDia,alimentos,dia)=>{
+  /*const planDia = {};
+          planUsuario[comidaDia].map(tipoAlimento => {
+            planDia[tipoAlimento] = [];
+          });
+      
+      return planDia*/
+  const menu = {
+    nombreMenu: '',
+    ingredientes: '',
+    preparcion: ''
+  }
+   
+  const esquema = Menu.escogerTipoMenu(planUsuario,comidaDia)
 
-minutaSchema.methods.agregarplan = (planUsuario,comidaDia)=>{
-  const planDia = {};
-  planUsuario[comidaDia].map(tipoAlimento => {
-    planDia[tipoAlimento] = [];
-  });
-  return planDia
+  if(esquema.tipoEsquema === 'tres estaciones'){
+    alimentos.armarReceta(dia) 
+  }
+  
+  return menu
 };
 
+/*minutaSchema.methods.escogerTipoMenu = function(comidaDia){
+   
+}*/
 
 minutaSchema.methods.agregarMenusMinuta = function(fechaInicial,diasMenus,plan){
 
@@ -117,11 +135,11 @@ minutaSchema.methods.agregarMenusMinuta = function(fechaInicial,diasMenus,plan){
     let agregarDia = fechaInicial.add(1,'days');
     this.menus.push({
       dia: modificarFormatoFecha(agregarDia),
-      desayuno : this.agregarplan(plan,'desayuno'),
-      mediaManana: this.agregarplan(plan,'mediaManana'),
-      almuerzo: this.agregarplan(plan,'almuerzo'),
-      algo: this.agregarplan(plan,'algo'),
-      cena: this.agregarplan(plan,'cena'),
+      desayuno : this.agregarMenuComida(plan,'desayuno',this.dia),
+      mediaManana: this.agregarMenuComida(plan,'mediaManana'),
+      almuerzo: this.agregarMenuComida(plan,'almuerzo'),
+      algo: this.agregarMenuComida(plan,'algo'),
+      cena: this.agregarMenuComida(plan,'cena'),
     });
   }
   return this.save();

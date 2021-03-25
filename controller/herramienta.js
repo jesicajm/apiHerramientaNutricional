@@ -1,26 +1,39 @@
-const {validationResult} = require('express-validator/check');
+//const {validationResult} = require('express-validator/check');
 const Usuario = require('../models/usuario');
+const Minuta = require('../models/minuta');
+
+exports.getPlanNutricional = (req,res,next) => {
+    Usuario.findById(req.userId)
+      .then(usuario => {
+          if(!usuario){
+             const error = new Error('Usuario no encontrado');
+             error.statusCode = 404;
+             throw error;
+          }
+          res.status(200).json({message:'Plan recuperado', plan: usuario.planNutricional})
+      })
+      .catch(err => {
+        if(!err.statusCode){
+          err.statusCode = 500;
+        }
+      });
+}
 
 exports.postPlanUsuario = (req,res,next) => {
-    const errors = validationResult(req);
-  
-    if(!errors.isEmpty()){
-        const error = new Error('Validacion fallo.');3
-        error.statusCode = 422;
-        error.data = errors.array();
-        throw error;
-    }
-  
     const desayuno = req.body.desayuno;
     const mediaManana = req.body.mediaManana;
     const almuerzo = req.body.almuerzo;
     const algo = req.body.algo;
     const cena = req.body.cena;
     const refrigerio = req.body.refrigerio;
-    console.log(req.userId);
-
+  
     Usuario.findById(req.userId)
       .then(usuario => {
+        if(!usuario){
+          const error = new Error('Usuario no encontrado');
+          error.statusCode = 404;
+          throw error;
+       }
         usuario.planNutricional.desayuno = desayuno;
         usuario.planNutricional.mediaManana = mediaManana;
         usuario.planNutricional.almuerzo = almuerzo;
@@ -37,5 +50,9 @@ exports.postPlanUsuario = (req,res,next) => {
       })
       .catch(err => {
         console.log(err);
-    });
+      });
+}
+
+exports.postguardarPlanMinuta = (req,res,nex) => {
+  
 }

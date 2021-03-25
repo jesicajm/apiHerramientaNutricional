@@ -43,6 +43,7 @@ const usuarioSchema = new Schema({
       required: true  
     }
   },
+  tienePlan: false,
   intolerancias: [],
   minutas:[]
 });

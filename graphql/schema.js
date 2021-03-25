@@ -9,6 +9,7 @@ module.exports = buildSchema(`
     }
 
     type Plan {
+        tienePlan: Boolean,
         desayuno: [String!]! 
         mediaManana: [String!]!
         almuerzo: [String!]!     
@@ -21,8 +22,34 @@ module.exports = buildSchema(`
         _id: ID!
         fechaInicial: String!
         fechaFinal: String!
+        menus:[Menu!]!
         intolerancias: [String!]!
         usuarioId: Usuario!
+    }
+
+    type Intolerancias {
+        intolerancias: [String!]!
+        alimentos: [String!]!
+    }
+
+    type Menu {
+        _id: ID!
+        dia: String!
+        desayuno: TipoAlimento
+        mediaManana: TipoAlimento
+        almuerzo: TipoAlimento     
+        algo: TipoAlimento
+        cena: TipoAlimento   
+        refrigerio: TipoAlimento
+    }
+
+    type TipoAlimento {
+        leche: [String!]
+        proteina: [String!]
+        harinas: [String!]
+        verduras: [String!]
+        frutas: [String!]
+        leguminosas: [String!]
     }
 
     type AuthData {
@@ -55,6 +82,8 @@ module.exports = buildSchema(`
     type RootQuery {
         login(email: String!, password: String!): AuthData! 
         planUsuario: Plan!
+        minuta: Minuta!
+        intolerancias: Intolerancias! 
     }
 
     type RootMutation {
