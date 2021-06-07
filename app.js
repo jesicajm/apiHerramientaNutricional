@@ -52,7 +52,7 @@ app.use((error,req,res,next) => {
 
 
 mongoose.connect(
-  'mongodb+srv://jesicajm:jdiosc12@hnutricional-baupa.mongodb.net/herramienta'
+  'mongodb+srv://jesicajm:jdiosc12@hnutricional-baupa.mongodb.net/herramienta',{ useNewUrlParser: true, useUnifiedTopology: true}
 ).then(result => {
     app.listen(3000);
 }).catch(err => console.log(err));

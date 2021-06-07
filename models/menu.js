@@ -4,31 +4,21 @@ const Schema = mongoose.Schema;
 
 const menuSchema = new Schema({ 
         comidaDia:String,
-        tipoEsquema:String,
-        composicion:[]
+        tipo:String,
+        composicion:[],
+        minimoPersonas: Number
 });
 
 
 menuSchema.statics.escogerTipoMenu = async function(planUsuario,comidaDia){
-    const esquemasMenus = await this.find({comidaDia:comidaDia});
-    console.log('esquemas:', esquemasMenus)
-    const esquemas = [];
-    
-    esquemasMenus.forEach(esquema => {
-        const tienenMismosAlimentos = esquema['composicion'].length === planUsuario[comidaDia].length && esquema['composicion'].every(alimento => planUsuario[comidaDia].includes(alimento)) 
-        console.log(tienenMismosAlimentos);
-        if(tienenMismosAlimentos){
-            esquemas.push(esquema);
-        }
-    })
-
-   /*if(esquemas.length > 1){
-     const esquemaMenu = Math.floor(Math.random() * esquemasMenu.length); 
-   } */
-   return(esquemas)
+    const esquemasMenus = await AlimentosUsuario.find({comidaDia:comidaDia});
+        /*if(esquemas.length > 1){
+            const esquemaMenu = Math.floor(Math.random() * esquemas.length); 
+        } */
+        console.log(AlimentosUsuario.esquemas);
+        
 }
-
-
+ 
 
 //Menu.escogerTipoMenu('almuerzo')
 /*const menu = new Menu({

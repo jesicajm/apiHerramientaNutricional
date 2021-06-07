@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const moment = require('moment');
+const mongoose = require('mongoose');
 
 const Usuario = require('../models/usuario');
 const Minuta = require('../models/minuta');
@@ -9,6 +10,7 @@ const Alimento = require('../models/alimento');
 const AlimentosUsuario = require('../models/alimentosUsuario');
 const Salsa = require('../models/salsa');
 const Menu = require('../models/menu');
+const alimento = require('../models/alimento');
 //const { NoUndefinedVariablesRule } = require('graphql');
 
 module.exports = {
@@ -38,27 +40,32 @@ module.exports = {
           throw error;
        }
        
-       const alimentos = await Alimento.find();
-       const salsas = await Salsa.find();
-       
        const hashedPw = await bcrypt.hash(userInput.password,12)
        const usuario = new Usuario({
-        nombre: userInput.nombre,
-        email: userInput.email,
-        password: hashedPw,
-        intolerancias: [],
-        tienePlan:false,
-        menus: [],
+          nombre: userInput.nombre,
+          email: userInput.email,
+          password: hashedPw,
+          intolerancias: [],
+          tienePlan:false,
+          menusMinutas:{},
+          totalMenusMinuta: 0
        });
 
        const crearUsuario = await usuario.save();
        
        const alimentosUsuario = new AlimentosUsuario({
-        alimentos: alimentos,
-        salsas: salsas,
-        usuarioId: usuario._id.toString()
+          proteinaAnimal:[],
+          proteinaVegetal:[],
+          proteinasCoccionRapida:{},
+          esquemas:[],
+          usuarioId: usuario._id.toString()
        })
-        
+
+       const alimentos = await Alimento.find();
+       const salsas = await Salsa.find();
+       //const alimentosUsuario = await AlimentosUsuario.findOne({usuarioId:usuario});
+       alimentosUsuario.clasificarAlimentosYsalsas(alimentos,salsas);
+
        await alimentosUsuario.save();
 
        return { ...crearUsuario._doc, _id: crearUsuario._id.toString()}
@@ -98,16 +105,28 @@ module.exports = {
         throw error;
       }
 
-      usuario.planNutricional.desayuno = userInput.desayuno.split(',')
-      usuario.planNutricional.mediaManana = userInput.mediaManana .split(',')
-      usuario.planNutricional.almuerzo = userInput.almuerzo.split(',')
-      usuario.planNutricional.algo = userInput.algo.split(',')
-      usuario.planNutricional.cena = userInput.cena.split(',')
-      usuario.planNutricional.refrigerio = userInput.refrigerio.split(',')
+      const esquemasMenus = await Menu.find();
+      const alimentosUsuario = await AlimentosUsuario.findOne({usuarioId:usuario});
+
+      const agregarComidaPlan = comidaDia => {
+        if(userInput[comidaDia].length > 0){
+          usuario.planNutricional[comidaDia] = userInput[comidaDia].split(',')
+        }
+      }
       
+      agregarComidaPlan('desayuno')
+      agregarComidaPlan('mediaManana')
+      agregarComidaPlan('almuerzo')
+      agregarComidaPlan('algo')
+      agregarComidaPlan('cena')
+      agregarComidaPlan('refrigerio')
+
       usuario.tienePlan = true;
       const guardarPlan = await usuario.save();
-      console.log(guardarPlan);
+      const plan = usuario.planNutricional;
+      
+      alimentosUsuario.guardarEsquemasUsuario(esquemasMenus,plan);
+     
       return { 
         ...guardarPlan._doc,
         desayuno: guardarPlan.planNutricional.desayuno,
@@ -115,7 +134,7 @@ module.exports = {
         almuerzo: guardarPlan.planNutricional.almuerzo,
         algo: guardarPlan.planNutricional.algo,
         cena: guardarPlan.planNutricional.cena,
-        refrigerio: guardarPlan.planNutricional.refrigerio,
+        refrigerio: guardarPlan.planNutricional.refrigerio
       };
     },
     planUsuario: async function(args,req){
@@ -131,6 +150,7 @@ module.exports = {
         error.code = 404;
         throw error;
      }
+   
      return {
         tienePlan: usuario.tienePlan,
         desayuno: usuario.planNutricional.desayuno,
@@ -161,18 +181,19 @@ module.exports = {
         throw error;
       }
       const usuario = await Usuario.findById(req.userId);
+          
       if(!usuario){
         const error = new Error('Usuario no encontrado');
         error.code = 401;
         throw error;
       }
-
-      const fechaInicial = moment(inputMinuta.fechaInicial, "YYYY-MM-DD");
-      const fechaFinal = moment(inputMinuta.fechaFinal, "YYYY-MM-DD");
-      const diasMenus = fechaFinal.diff(fechaInicial, 'days');
-      const plan = usuario.planNutricional;
       
       const minutaActual = await Minuta.findOne({usuarioId:usuario});
+            
+      const fechaInicial = moment(inputMinuta.fechaInicial, "YYYY-MM-DD");
+      const fechaFinal = moment(inputMinuta.fechaFinal, "YYYY-MM-DD");
+      const diasMenus = fechaFinal.diff(fechaInicial, 'days') + 1;
+      const plan = usuario.planNutricional;
       
       if(minutaActual){
         await minutaActual.deleteOne();
@@ -181,50 +202,74 @@ module.exports = {
       const minuta = new Minuta({
         fechaInicialPlanificarMenus: inputMinuta.fechaInicial,
         fechaFinalPlanificarMenus: inputMinuta.fechaFinal,
-          menus:[
-            {
-              dia: null,
-              desayuno: {},
-              mediaManana: {},
-              almuerzo: {},
-              algo: {},
-              cena: {},
-              refrigerio: {}
-            }
-          ],
-          usuarioId: usuario
-        });
+        diasMenus: diasMenus,
+        menus: {},
+        usuarioId: usuario
+      });
 
-        guardarMinuta = await minuta.agregarMenusMinuta(fechaInicial,diasMenus,plan);
+      const alimentosUsuario = await AlimentosUsuario.findOne({usuarioId:usuario});
       
-        let inputIntolerancias = [];
+      let inputIntolerancias = [];
+      const grupoAlimentos = ['proteinaAnimal','proteinaVegetal']
+      console.log('intolerancias: ' + inputIntolerancias);
    
-        const menus = await Menu.find({comidaDia:'almuerzo'});
-        
-        const alimentosUsuario = await AlimentosUsuario.findOne({usuarioId:usuario});
-  
-        if(inputMinuta.intolerancias.length > 0){
-          inputIntolerancias = inputMinuta.intolerancias.split(',');
-          inputIntolerancias.forEach(intolerancia => {
-            const existeIntolerancia = usuario.intolerancias.includes(intolerancia);
-            if(!existeIntolerancia){
-              alimentosUsuario.eliminarIntolerancia(intolerancia);
-              usuario.intolerancias.push(intolerancia);
+      //const menus = await Menu.find({comidaDia:'almuerzo'});
+      if(inputMinuta.intolerancias.length > 0){
+        console.log(inputMinuta.intolerancias)
+        console.log(inputMinuta.intolerancias.length)
+        inputIntolerancias = inputMinuta.intolerancias.split(',');
+        inputIntolerancias.forEach(intolerancia => {
+          console.log('intolerancia: ' + intolerancia)
+          const existeIntolerancia = usuario.intolerancias.includes(intolerancia);
+          if(!existeIntolerancia){
+            usuario.intolerancias.push(intolerancia);
+            console.log(intolerancia)
+          }
+          Object.keys(alimentosUsuario.toJSON()).forEach(propiedad => {
+            const esGrupoAlimentos = grupoAlimentos.includes(propiedad);
+            if(propiedad === 'proteinaAnimal'){
+              const nuevaLista = []
+              for(let alimento of alimentosUsuario.proteinaAnimal){
+                if(alimento.tipoProteina[1] !== intolerancia){
+                  nuevaLista.push(alimento);
+                }
+              }
+              alimentosUsuario.proteinaAnimal = nuevaLista;
+            }else if(esGrupoAlimentos && !propiedad === 'proteinaAnimal'){
+              alimentosUsuario[propiedad].map(alimento => {
+                if(alimento.nombreAlimento === intolerancia){
+                  alimentosUsuario[propiedad].splice(alimentosUsuario[propiedad].indexOf(alimento),1)      
+                }  
+              })
+            }else if(propiedad === 'salsas'){
+                for(const tipoSalsa in alimentosUsuario.salsas.toJSON()){
+                  alimentosUsuario.salsas[tipoSalsa].map(salsa =>{
+                    const existeIntolerancia = salsa.ingredientes.includes(intolerancia);
+                    if(existeIntolerancia){
+                      alimentosUsuario.salsas[tipoSalsa].splice(alimentosUsuario.salsas[tipoSalsa].indexOf(alimento),1)  
+                    }
+                  })        
+                }  
             }
-          });
-        }
+        })
+        })    
+      }    
+    
+      await alimentosUsuario.save();
+
+      const minutaPlan = await minuta.agregarMenusMinuta(fechaInicial,diasMenus,alimentosUsuario, plan,usuario);
+    
+      console.log(minutaPlan)
+      await usuario.save();
         
-        await alimentosUsuario.save();
-        usuario.minutas.push(guardarMinuta);
-        await usuario.save();
-        
-        return {
-          ...guardarMinuta._doc, 
-          _id:guardarMinuta._id.toString(),
-          fechaInicial: guardarMinuta.fechaInicialPlanificarMenus,
-          fechaFinal: guardarMinuta.fechaFinalPlanificarMenus,
-          intolerancias: inputIntolerancias
-        }     
+      return {
+        ...minutaPlan._doc, 
+        _id: minutaPlan._id.toJSON(),
+        fechaInicial: minutaPlan.fechaInicialPlanificarMenus,
+        fechaFinal: minutaPlan.fechaFinalPlanificarMenus,
+        diasMenus: minutaPlan.diasMenus,
+        intolerancias: inputIntolerancias
+      }     
     },
     minuta: async function(args,req){
       if(!req.isAuth){
@@ -233,37 +278,24 @@ module.exports = {
         throw error;
       }
       const usuario = await Usuario.findById(req.userId);
+     
       if(!usuario){
         const error = new Error('Usuario no encontrado');
         error.code = 404;
         throw error;
       }
 
-      const minuta = usuario.minutas[usuario.minutas.length-1]
-      const alimentosUsuario = await AlimentosUsuario.findOne({usuarioId:usuario});
-      const plan = usuario.planNutricional;
-    
-      Menu.escogerTipoMenu(plan,'almuerzo');
-      alimentosUsuario.armarReceta('martes');
-      //console.log(minuta);
+      const minuta = await Minuta.findOne({usuarioId:usuario});
+      console.log(minuta)
+          
       return {
         ...minuta._doc,
         _id: minuta._id.toString(),
-        fechaInicial:minuta.fechaInicialPlanificarMenus,
-        fechaFinal:minuta.fechaFinalPlanificarMenus,
-        menus: minuta.menus.map(m => {
-          return {
-            ...m._doc, 
-            _id: m._id.toString(),
-            dia: m.dia, 
-            desayuno: m.desayuno, 
-            mediaManana: m.mediaManana,
-            almuerzo: m.almuerzo,
-            algo: m.algo,
-            cena: m.cena,
-            refrigerio: m.refrigerio
-          }
-        })
+        fechaInicial: minuta.fechaInicialPlanificarMenus,
+        fechaFinal: minuta.fechaFinalPlanificarMenus,
+        diasMenus: minuta.diasMenus,
+        diasMinuta : minuta.diasMinuta,
+        menus: minuta.menus
       }
     },
     intolerancias: async function(args,req){
@@ -280,10 +312,15 @@ module.exports = {
       }
 
       const intolerancias = usuario.intolerancias;  
-      const listaAlimentos = await Alimento.find().select('nombreAlimento -_id');
+      const listaAlimentos = await Alimento.find();
       const alimentos = [];
       listaAlimentos.forEach(alimento =>{
-        alimentos.push(alimento.nombreAlimento);
+        if(alimento.tipoAlimento === 'proteina'){
+          if(!alimentos.includes(alimento.tipoProteina[1]))
+          alimentos.push(alimento.tipoProteina[1])
+        }else{
+          alimentos.push(alimento.nombreAlimento); 
+        }
       });
       
       return{

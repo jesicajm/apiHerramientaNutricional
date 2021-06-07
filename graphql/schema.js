@@ -10,19 +10,21 @@ module.exports = buildSchema(`
 
     type Plan {
         tienePlan: Boolean,
-        desayuno: [String!]! 
-        mediaManana: [String!]!
-        almuerzo: [String!]!     
-        algo: [String!]!
-        cena: [String!]!   
-        refrigerio: [String!]!
+        desayuno: [String] 
+        mediaManana: [String]
+        almuerzo: [String]     
+        algo: [String]
+        cena: [String]   
+        refrigerio: [String]
     }
 
     type Minuta {
         _id: ID!
         fechaInicial: String!
         fechaFinal: String!
-        menus:[Menu!]!
+        menus: PlanMenu!
+        diasMenus: Int
+        diasMinuta: [String!]
         intolerancias: [String!]!
         usuarioId: Usuario!
     }
@@ -32,24 +34,36 @@ module.exports = buildSchema(`
         alimentos: [String!]!
     }
 
-    type Menu {
-        _id: ID!
-        dia: String!
-        desayuno: TipoAlimento
-        mediaManana: TipoAlimento
-        almuerzo: TipoAlimento     
-        algo: TipoAlimento
-        cena: TipoAlimento   
-        refrigerio: TipoAlimento
+    type PlanMenu {
+        desayuno: [Menu!]
+        mediaManana: [Menu!]
+        almuerzo: [Menu!]     
+        algo: [Menu!]
+        cena: [Menu!]   
+        refrigerio: [Menu!]
     }
 
-    type TipoAlimento {
-        leche: [String!]
-        proteina: [String!]
-        harinas: [String!]
-        verduras: [String!]
-        frutas: [String!]
-        leguminosas: [String!]
+    type Menu{
+        dia: String
+        nombreMenu:[String!]
+        receta: Receta
+        ingrediente: [String!]
+        preparacion: String!
+    }
+
+    type Receta{
+        nombre: String
+        salsa: Salsa!
+        proteina: String
+        corteProteina: String
+        coccionPorteina: String
+        prepraracion: String
+    }
+
+    type Salsa{
+        nombre: String
+        ingredientes: [String]
+        preparacion: String
     }
 
     type AuthData {
@@ -67,7 +81,7 @@ module.exports = buildSchema(`
     input UserInputPlan{
         desayuno: String!
         mediaManana: String!
-        almuerzo: String!  
+        almuerzo: String!
         algo: String!
         cena: String!  
         refrigerio: String!
@@ -91,7 +105,7 @@ module.exports = buildSchema(`
         guardarPlanNutricional(userInput: UserInputPlan): Plan!
         guardarPlanMinuta(inputMinuta: InputMinuta): Minuta! 
     }
-
+    
     schema {
        query: RootQuery
        mutation: RootMutation

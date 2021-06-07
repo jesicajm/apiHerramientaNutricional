@@ -3,8 +3,9 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const salsaSchema = new Schema({ 
-        nombreSalsa: {type: String, required: true },
-        tipoSalsa: {type: String, required: true },
+        nombre: {type: String, required: true },
+        tipoProteina: String, 
+        tiempoCoccion: String,
         preparacion: String,
         ingredientes: []
 });
@@ -12,10 +13,11 @@ const salsaSchema = new Schema({
 /*const Salsa = mongoose.model('Salsa', salsaSchema);
 
 const salsa = new Salsa({
-        nombreSalsa: 'salsa de champiñiones',
-        tipoSalsa: 'coccion rapida carnes rojas',
+        nombre: 'salsa de pomodoro',
+        tipoProteina: 'pescado', 
+        tiempoCoccion: 'rapido',
         preparacion: '',
-        ingredientes: ['Carne de cerdo']
+        ingredientes: ['tomate']
 });
 
 salsa.save().then(result => {
@@ -23,6 +25,6 @@ salsa.save().then(result => {
       })
       .catch(err => {
         console.log(err);
-       });*/
+});*/
 
 module.exports = mongoose.model('Salsa', salsaSchema);
